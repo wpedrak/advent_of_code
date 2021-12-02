@@ -14,15 +14,16 @@ def get_move(line: str):
 
 moves = get_moves()
 shifts = {
-    'forward': (1, 0),
-    'up': (0, -1),
-    'down': (0, 1),
+    'forward': (1, 1, 0),
+    'up': (0, 0, -1),
+    'down': (0, 0, 1),
 }
-x, y = 0, 0
+x, y, aim = 0, 0, 0
 
 for cmd, arg in moves:
-    dx, dy = shifts[cmd]
+    dx, dy, daim = shifts[cmd]
     x += dx * arg
-    y += dy * arg
+    y += dy * aim * arg
+    aim += daim * arg
 
 print(x, y, x*y)

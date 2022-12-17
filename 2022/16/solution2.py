@@ -1,5 +1,5 @@
 import re
-from collections import defaultdict, deque
+from collections import deque
 
 def run() -> None:
     graph, flows = build_graph(read_lines())
@@ -15,47 +15,44 @@ def run() -> None:
             dist[(valve_1, valve_2)] = dst
             dist[(valve_2, valve_1)] = dst
 
-    max_preassure = release_max_preassure(set(non_zero_valves), dist, flows, 'AA')
-    print(max_preassure)
+    print('Finding paths')
+    paths = all_paths(set(non_zero_valves), dist, 'AA', 26)
+    print('Sorting paths')
+    sorted_paths = list(sorted(paths, key=lambda x: pressure(dist, flows, x), reverse=True))
+
+    set_and_pressure = [(set(p) - {'AA'}, pressure(dist, flows, p)) for p in sorted_paths]
+    local_max = 0
+    set_and_pressure_chunk = set_and_pressure[:1000]
+    print(f'Searching for result in {len(set_and_pressure_chunk)} most valuable paths. If the result is too low, please increase the limit.')
+    for idx_1, (set_1, preassure_1) in enumerate(set_and_pressure_chunk):
+        for idx_2 in range(idx_1+1, len(set_and_pressure_chunk)):
+            set_2, preassure_2 = set_and_pressure_chunk[idx_2]
+
+            if not (set_1 & set_2):
+                local_max = max(local_max, preassure_1 + preassure_2)
+
+    print(local_max)
 
 
-def release_max_preassure(non_zero_valves: set[str], distance: dict[tuple[str, str], int], flows: dict[str, int], start: str) -> int:
-    to_visit = [(start, start, set(), 26, 26, 0)]
-    max_preassure = 0
-    best_pressure = defaultdict(int)
-    it = 0
-    while to_visit:
-        it += 1
-        if not it % 100000:
-            print(max_preassure, f'{it//1000000}M')
-            print(len(best_pressure))
+def pressure(distance: dict[tuple[str, str], int], flows: dict[str, int], path: list[str]) -> int:
+    time = 26
+    res = 0
+    for a, b in zip(path[:-1], path[1:]):
+        time -= distance[(a, b)]
+        res += time * flows[b]
 
-        me, elephant, visited, my_time, elephant_time, pressure = to_visit.pop()
-        not_visited = non_zero_valves - visited
+    return res
 
-        my_reachable_neighbours = [nv for nv in not_visited if distance[(me, nv)] < my_time]
-        for neighbour in my_reachable_neighbours:
-            dist = distance[(me, neighbour)]
-            new_pressure = pressure + (my_time - dist) * flows[neighbour]
-            state = (neighbour, elephant, frozenset(visited | {neighbour}), my_time - dist, elephant_time)
-            if new_pressure <= best_pressure[state]:
-                continue
-            best_pressure[state] = new_pressure
-            max_preassure = max(max_preassure, new_pressure)
-            to_visit.append((neighbour, elephant, visited | {neighbour}, my_time - dist, elephant_time, new_pressure))
+def all_paths(vertices: set[str], distance: dict[tuple[str, str], int], start: str, time: int) -> list[list[str]]:
+    reachable = {v for v in vertices if distance[(start, v)]<= time}
+    if not reachable:
+        return [[start]]
+    res = [[start]]
+    for vertex in reachable:
+        for prev in all_paths(reachable-{vertex}, distance, vertex, time - distance[(start, vertex)]):
+            res.append([start] + prev)
 
-        elephant_reachable_neighbours = [nv for nv in not_visited if distance[(elephant, nv)] < elephant_time]
-        for neighbour in elephant_reachable_neighbours:
-            dist = distance[(elephant, neighbour)]
-            new_pressure = pressure + (elephant_time - dist) * flows[neighbour]
-            state = (me, neighbour, frozenset(visited | {neighbour}), my_time, elephant_time - dist)
-            if new_pressure <= best_pressure[state]:
-                continue
-            best_pressure[state] = new_pressure
-            max_preassure = max(max_preassure, new_pressure)
-            to_visit.append((me, neighbour, visited | {neighbour}, my_time, elephant_time - dist, new_pressure))
-
-    return max_preassure
+    return res
 
 def distance_in_graph(graph: dict[str, list[str]], start: str, end: str) -> None:
     to_visit = deque([start, 'LEVEL_UP'])

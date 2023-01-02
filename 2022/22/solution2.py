@@ -6,7 +6,7 @@ DOWN = 'down'
 UP = 'up'
 
 def run() -> None:
-    lines = read_lines()
+    lines = read_lines(file_name='input.txt')
     board = lines[:-2]
     row_len = max(len(row) for row in board)
     board = [' ' * row_len] + board + [' ' * row_len]
@@ -22,7 +22,7 @@ def run() -> None:
 
         x, y, facing = move(board, x, y, facing, command)
 
-    print(y * 1000 + x * 4 + facing_cost(facing))
+    print(f'({x}, {y}, {facing}) ->', y * 1000 + x * 4 + facing_cost(facing))
 
 def read_lines(file_name: str = 'input.txt') -> list[str]:
     return [line.rstrip('\n') for line in open(file_name, 'r', encoding='utf-8')]
@@ -61,6 +61,11 @@ def move(board: list[str], x: int, y: int, facing: str, distance: int) -> tuple[
     dx, dy = deltas[facing]
     next_x, next_y = x+dx, y+dy
     next_facing = facing
+    if board[next_y][next_x] == ' ':
+        print(f'wrap ({next_x}, {next_y}) -> ', end='')
+        next_x, next_y, next_facing = wrap(next_x, next_y)
+        print(f'({next_x}, {next_y})')
+        dx, dy = deltas[next_facing]
 
     while distance and board[next_y][next_x] != '#':
         distance -= 1
@@ -71,7 +76,9 @@ def move(board: list[str], x: int, y: int, facing: str, distance: int) -> tuple[
         next_y += dy
         # next step will require wrapping
         if board[next_y][next_x] == ' ':
-            x, y, next_facing = wrap(next_x, next_y)
+            print(f'wrap ({next_x}, {next_y}) -> ', end='')
+            next_x, next_y, next_facing = wrap(next_x, next_y)
+            print(f'({next_x}, {next_y})')
             dx, dy = deltas[next_facing]
 
     return x, y, facing
@@ -100,13 +107,13 @@ def wrap(x: int, y: int) -> tuple[int, int, str]:
         return rotate_left(x, y, facing)
     if x == 101 and 100 < y <= 150:
         x, y = shift(UP, x, y, times=2)
-        return rotate_back(x, y)
+        return rotate_back(x, y, facing)
     if x == 51 and 150 < y <= 200:
         x, y = shift(UP, x, y)
         return rotate_left(x, y, facing)
 
     facing = DOWN
-    if x < 0 <= 50 and y == 201:
+    if 0 < x <= 50 and y == 201:
         x, y = shift(UP, x, y, times=4)
         x, y = shift(RIGHT, x, y, times=2)
         return x, y, facing
@@ -131,7 +138,7 @@ def wrap(x: int, y: int) -> tuple[int, int, str]:
     if x == 0 and 150 < y <= 200:
         x, y = shift(UP, x, y, times=3)
         x, y = shift(RIGHT, x, y, times=2)
-        return rotate_left(x, y, facing)
+        return rotate_right(x, y, facing)
 
     raise Exception(f'Failed to wrap ({x}, {y})')    
 
@@ -163,7 +170,8 @@ def rotate_back(*args) -> tuple[int, int, str]:
     return rotate_right(args)
 
 def rotate_left(*args) -> tuple[int, int, str]:
-    args = rotate_back(args)
+    args = rotate_right(args)
+    args = rotate_right(args)
     return rotate_right(args)
     
 def shift(direction: str, x: int, y: int, times=1) -> tuple[int, int]:
@@ -180,3 +188,6 @@ def facing_cost(facing: str) -> int:
     return [RIGHT, DOWN, LEFT, UP].index(facing)
 
 run()
+
+# 108239 too low
+# 178196 too high

@@ -27,9 +27,13 @@ class Factory:
 
     @functools.cache
     def possible_production(self, resources: rsc) -> list[tuple[rsc, rsc]]:
-        return self.__possible_production_aux(resources, 0)
+        spendable_resources = list(resources)
+        spendable_resources[3] = 0
+        spendable_resources = tuple(spendable_resources)
+        return self.__possible_production_aux(spendable_resources, 0)
 
 
+    @functools.cache
     def __possible_production_aux(self, resources: rsc, idx: int) -> list[tuple[rsc, rsc]]:
         if idx >= 4:
             return [((0, 0, 0, 0), (0, 0, 0, 0))]
@@ -52,10 +56,9 @@ def run() -> None:
     result = 0
     for line in read_lines():
         blueprint_id, factory = parse(line)
-        print(factory.possible_production((10, 0, 0, 0)))
-        geodes = test(factory)
-        result += blueprint_id * geodes
-        print(blueprint_id, geodes)
+        geodes_count = test(factory)
+        result += blueprint_id * geodes_count
+        print(blueprint_id, geodes_count)
 
 def read_lines(file_name: str = 'input.txt') -> list[str]:
     return [line.rstrip() for line in open(file_name, 'r', encoding='utf-8')]
@@ -79,6 +82,7 @@ def test(factory: Factory) -> int:
             time -= 1
             if time == 0:
                 return max_geodes
+            print(max_geodes, it, len(visited), len(to_visit), time)
             to_visit.append('TICK')
             continue
 
@@ -97,19 +101,19 @@ def test(factory: Factory) -> int:
             # for tmp3 in reversed(tmp2):
             #     print(tmp3)
         if not it % 10000:
-            print(max_geodes, it, len(visited), time)
+            print(max_geodes, it, len(visited), len(to_visit), time)
 
         for new_robots, cost in factory.possible_production(resources):
             resources_after_minute = add_tup(sub_tup(resources, cost), robots)
             robots_after_minute = add_tup(robots, new_robots)
 
             new_item = (robots_after_minute, resources_after_minute)
-            if (robots_after_minute, resources_after_minute) in visited:
+            if new_item in visited:
                 continue
 
-            visited.add((robots_after_minute, resources_after_minute))
+            visited.add(new_item)
             to_visit.append(new_item)
-            prev[new_item] = item
+            # prev[new_item] = item
 
     return max_geodes
 

@@ -24,6 +24,7 @@ class Factory:
             (obsidian_cost_ore, obsidian_cost_clay, 0, 0),
             (geode_cost_ore, 0, geode_cost_obsidian, 0),
         ]
+        self.one_of_kind = (ore_cost+clay_cost+obsidian_cost_ore+geode_cost_ore, obsidian_cost_clay, geode_cost_obsidian, 0)
 
     @functools.cache
     def possible_production(self, resources: rsc) -> list[tuple[rsc, rsc]]:
@@ -51,6 +52,8 @@ class Factory:
 
         return no_buy_options + post_buy_options
 
+    def one_of_kind_resources(self) -> rsc:
+        return self.one_of_kind
 
 def run() -> None:
     result = 0
@@ -89,17 +92,6 @@ def test(factory: Factory) -> int:
         robots, resources = item
 
         it += 1
-        if max_geodes < geodes(resources):
-            max_geodes = max(max_geodes, geodes(resources))
-            # print(max_geodes, it, len(visited), time)
-            # tmp = item
-            # tmp2 = []
-            # while tmp in prev:
-            #     tmp2.append(tmp)
-            #     tmp = prev[tmp]
-            # tmp2.append(tmp)
-            # for tmp3 in reversed(tmp2):
-            #     print(tmp3)
         if not it % 10000:
             print(max_geodes, it, len(visited), len(to_visit), time)
 
@@ -107,13 +99,35 @@ def test(factory: Factory) -> int:
             resources_after_minute = add_tup(sub_tup(resources, cost), robots)
             robots_after_minute = add_tup(robots, new_robots)
 
+            # limit = 5
+            # if robots_after_minute[0] > limit or robots_after_minute[1] > limit or robots_after_minute[2] > limit:
+            #     continue
+
+            if not is_neg_tup(sub_tup(resources_after_minute, factory.one_of_kind_resources())):
+                continue
+
             new_item = (robots_after_minute, resources_after_minute)
             if new_item in visited:
                 continue
 
             visited.add(new_item)
-            to_visit.append(new_item)
-            # prev[new_item] = item
+
+            if time > 1:
+                to_visit.append(new_item)
+            prev[new_item] = item
+
+            if max_geodes < geodes(resources_after_minute):
+                max_geodes = geodes(resources_after_minute)
+                print(max_geodes, it, len(visited), time)
+                tmp = new_item
+                tmp2 = []
+                while tmp in prev:
+                    tmp2.append(tmp)
+                    tmp = prev[tmp]
+                tmp2.append(tmp)
+                for tmp3 in reversed(tmp2):
+                    print(tmp3)
+
 
     return max_geodes
 

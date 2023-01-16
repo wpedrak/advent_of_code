@@ -3,6 +3,7 @@ import functools
 from collections import deque
 
 rsc = tuple[int, int, int, int]
+bns = tuple[bool, bool, bool, bool]
 
 def add_tup(a: tuple, b: tuple) -> tuple:
     return (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3])
@@ -24,14 +25,37 @@ class Factory:
             (obsidian_cost_ore, obsidian_cost_clay, 0, 0),
             (geode_cost_ore, 0, geode_cost_obsidian, 0),
         ]
-        self.one_of_kind = (ore_cost+clay_cost+obsidian_cost_ore+geode_cost_ore, obsidian_cost_clay, geode_cost_obsidian, 0)
 
     @functools.cache
-    def possible_production(self, resources: rsc) -> list[tuple[rsc, rsc]]:
+    def possible_production(self, resources: rsc, bans: bns) -> list[tuple[rsc, rsc, bns]]:
         spendable_resources = list(resources)
         spendable_resources[3] = 0
         spendable_resources = tuple(spendable_resources)
-        return self.__possible_production_aux(spendable_resources, 0)
+        result = []
+        for robots, prices in self.__possible_production_aux(spendable_resources, 0):
+            # don't allow banned robots
+            if any(b and r for b, r in zip(bans, robots)):
+                continue
+
+            # something was bought
+            new_bans = [False] * 4
+            if robots == (0, 0, 0, 0):
+                # nothing was bought
+                new_bans = list(bans)
+
+            money_left = sub_tup(resources, prices)
+            for idx in range(4):
+                if robots[idx]:
+                    continue
+                # ban if had resources to buy the robot
+                new_bans[idx] |= not is_neg_tup(sub_tup(money_left, self.cost[idx]))
+
+            if all(new_bans):
+                continue
+
+            result.append((robots, money_left, tuple(new_bans)))
+
+        return result
 
 
     @functools.cache
@@ -52,9 +76,6 @@ class Factory:
 
         return no_buy_options + post_buy_options
 
-    def one_of_kind_resources(self) -> rsc:
-        return self.one_of_kind
-
 def run() -> None:
     result = 0
     for line in read_lines():
@@ -71,11 +92,11 @@ def parse(line: str) -> tuple[int, Factory]:
     return values[0], Factory(*values[1:])
 
 def test(factory: Factory) -> int:
-    to_visit = deque([((1, 0, 0, 0), (0, 0, 0, 0)), 'TICK'])
+    to_visit = deque([((1, 0, 0, 0), (0,) * 4, (False,) * 4), 'TICK'])
     visited = set()
     it = 0
     max_geodes = 0
-    prev = {}
+    # prev = {}
     time = 24
 
     while to_visit:
@@ -89,24 +110,21 @@ def test(factory: Factory) -> int:
             to_visit.append('TICK')
             continue
 
-        robots, resources = item
+        robots, resources, bans = item
 
         it += 1
         if not it % 10000:
             print(max_geodes, it, len(visited), len(to_visit), time)
 
-        for new_robots, cost in factory.possible_production(resources):
-            resources_after_minute = add_tup(sub_tup(resources, cost), robots)
+        for new_robots, resources_left, new_bans in factory.possible_production(resources, bans):
+            resources_after_minute = add_tup(resources_left, robots)
             robots_after_minute = add_tup(robots, new_robots)
 
             # limit = 5
             # if robots_after_minute[0] > limit or robots_after_minute[1] > limit or robots_after_minute[2] > limit:
             #     continue
 
-            if not is_neg_tup(sub_tup(resources_after_minute, factory.one_of_kind_resources())):
-                continue
-
-            new_item = (robots_after_minute, resources_after_minute)
+            new_item = (robots_after_minute, resources_after_minute, new_bans)
             if new_item in visited:
                 continue
 
@@ -114,19 +132,20 @@ def test(factory: Factory) -> int:
 
             if time > 1:
                 to_visit.append(new_item)
-            prev[new_item] = item
+            # prev[new_item] = item
 
             if max_geodes < geodes(resources_after_minute):
                 max_geodes = geodes(resources_after_minute)
                 print(max_geodes, it, len(visited), time)
-                tmp = new_item
-                tmp2 = []
-                while tmp in prev:
-                    tmp2.append(tmp)
-                    tmp = prev[tmp]
-                tmp2.append(tmp)
-                for tmp3 in reversed(tmp2):
-                    print(tmp3)
+                print(new_item)
+                # tmp = new_item
+                # tmp2 = []
+                # while tmp in prev:
+                #     tmp2.append(tmp)
+                #     tmp = prev[tmp]
+                # tmp2.append(tmp)
+                # for tmp3 in reversed(tmp2):
+                #     print(tmp3)
 
 
     return max_geodes

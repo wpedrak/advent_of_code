@@ -17,6 +17,10 @@ def geodes(a: tuple) -> int:
 def is_neg_tup(a: tuple) -> bool:
     return a[0] < 0 or a[1] < 0 or a[2] < 0 or a[3] < 0
 
+def fully_blocked(resources: rsc, bans: bns) -> bool:
+    # no resources (thus robots), but already banned
+    return any(not r and b for r, b in zip(resources, bans))
+
 class Factory:
     def __init__(self, ore_cost: int, clay_cost: int, obsidian_cost_ore: int, obsidian_cost_clay: int, geode_cost_ore: int, geode_cost_obsidian: int) -> None:
         self.cost = [
@@ -50,7 +54,7 @@ class Factory:
                 # ban if had resources to buy the robot
                 new_bans[idx] |= not is_neg_tup(sub_tup(money_left, self.cost[idx]))
 
-            if all(new_bans):
+            if fully_blocked(resources, new_bans):
                 continue
 
             result.append((robots, money_left, tuple(new_bans)))
@@ -75,6 +79,19 @@ class Factory:
         post_buy_options = [(add_tup(one_robot, option), add_tup(robot_cost, cost)) for option, cost in self.__possible_production_aux(post_buy_resources, idx)]
 
         return no_buy_options + post_buy_options
+
+    def greedy_time_forward(self, time_to_skip: int, robots: rsc, resources: rsc) -> rsc:
+        for _ in range(time_to_skip):
+            new_robots = (0,) * 4
+            geodes_robot_cost = self.cost[3]
+            while not is_neg_tup(sub_tup(resources, geodes_robot_cost)):
+                resources = sub_tup(resources, geodes_robot_cost)
+                new_robots = add_tup(new_robots, (0, 0, 0, 1))
+            resources= add_tup(resources, robots)
+            robots = add_tup(robots, new_robots)
+
+        return resources
+
 
 def run() -> None:
     result = 0
@@ -111,6 +128,11 @@ def test(factory: Factory) -> int:
             continue
 
         robots, resources, bans = item
+
+        if time <= 1:
+            final_resources = factory.greedy_time_forward(time, robots, resources)
+            max_geodes = max(max_geodes, geodes(final_resources))
+            continue
 
         it += 1
         if not it % 10000:

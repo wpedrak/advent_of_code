@@ -36,7 +36,7 @@ class Factory:
         spendable_resources[3] = 0
         spendable_resources = tuple(spendable_resources)
         result = []
-        for robots, prices in self.__possible_production_aux(spendable_resources, 0):
+        for robots, price in self.__possible_production_aux(spendable_resources, 0):
             # don't allow banned robots
             if any(b and r for b, r in zip(bans, robots)):
                 continue
@@ -47,10 +47,8 @@ class Factory:
                 # nothing was bought
                 new_bans = list(bans)
 
-            money_left = sub_tup(resources, prices)
+            money_left = sub_tup(resources, price)
             for idx in range(4):
-                if robots[idx]:
-                    continue
                 # ban if had resources to buy the robot
                 new_bans[idx] |= not is_neg_tup(sub_tup(money_left, self.cost[idx]))
 
@@ -129,7 +127,7 @@ def test(factory: Factory) -> int:
 
         robots, resources, bans = item
 
-        if time <= 1:
+        if time <= 2:
             final_resources = factory.greedy_time_forward(time, robots, resources)
             max_geodes = max(max_geodes, geodes(final_resources))
             continue
@@ -138,13 +136,13 @@ def test(factory: Factory) -> int:
         if not it % 10000:
             print(max_geodes, it, len(visited), len(to_visit), time)
 
+        if len(factory.possible_production(resources, bans)) > 30:
+            print(robots, resources, bans)
+            print(factory.possible_production(resources, bans))
+
         for new_robots, resources_left, new_bans in factory.possible_production(resources, bans):
             resources_after_minute = add_tup(resources_left, robots)
             robots_after_minute = add_tup(robots, new_robots)
-
-            # limit = 5
-            # if robots_after_minute[0] > limit or robots_after_minute[1] > limit or robots_after_minute[2] > limit:
-            #     continue
 
             new_item = (robots_after_minute, resources_after_minute, new_bans)
             if new_item in visited:

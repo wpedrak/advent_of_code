@@ -1,4 +1,5 @@
-from collections import deque
+import heapq
+from collections import defaultdict
 
 LEFT = 'L'
 RIGHT = 'R'
@@ -11,33 +12,26 @@ def get_lines(filename='input.txt') -> list[str]:
 def min_path(board: list[list[int]]) -> int:
     height = len(board)
     width = len(board[0])
-    to_visit: deque[tuple[int, int, str, int, int]] = deque([(0, 0, RIGHT, 0, 0)])
-    lowest_heat: dict[tuple[int, int, str, int], int] = {(0, 0, RIGHT, 0): 0}
-    target = (width-1, height-1)
-    best_heat = (width + height) * 9
+    to_visit: list[tuple[int, tuple[int, int, str, int]]] =  [(0, (0, 0, RIGHT, 0))]
+    lowest_heat = defaultdict(lambda: float("inf"))
+    lowest_heat[(0, 0, RIGHT, 0)] = 0
 
     while to_visit:
-        x, y, direction, direction_steps, heat = to_visit.popleft()
-        state = (x, y, direction, direction_steps)
+        heat, state = heapq.heappop(to_visit)
 
-        if lowest_heat[state] < heat:
+        if heat > lowest_heat[state]:
             continue
 
-        if (x, y) == target:
-            best_heat = min(best_heat, heat)
-
         for neighbour in get_neighbours(board, state):
-            x, y, direction, direction_steps = neighbour
+            x, y, _, _ = neighbour
             neighbour_heat = heat + board[y][x]
-            if neighbour_heat > best_heat:
-                continue
-            if neighbour in lowest_heat and lowest_heat[neighbour] <= neighbour_heat:
+            if lowest_heat[neighbour] <= neighbour_heat:
                 continue
 
             lowest_heat[neighbour] = neighbour_heat
-            to_visit.append((x, y, direction, direction_steps, neighbour_heat))
+            heapq.heappush(to_visit, (neighbour_heat, neighbour))
 
-    return best_heat
+    return min(v for k, v in lowest_heat.items() if k[:2] == (width-1, height-1))
 
 def get_neighbours(board: list[list[int]], state: tuple[int, int, str, int]) -> list[tuple[int, int, str, int]]:
     height = len(board)

@@ -1,3 +1,4 @@
+import functools
 import itertools
 
 class Mover:
@@ -11,6 +12,7 @@ class NumpadRobot(Mover):
     def __init__(self, provider: Mover):
         self.mover = provider
 
+    @functools.cache
     def cost_single(self, source: str, target: str) -> int:
         sx, sy = self.coordinates(source)
         tx, ty = self.coordinates(target)
@@ -49,6 +51,7 @@ class DirectpadRobot(Mover):
     def __init__(self, provider: Mover):
         self.mover = provider
 
+    @functools.cache
     def cost_single(self, source: str, target: str) -> int:
         moves = {
             'A': {'^': ['<'], 'v': ['<v', 'v<'], '<': ['<v<', 'v<<'], '>': ['v'], 'A': ['']},
@@ -71,9 +74,12 @@ def read_lines(filename='input.txt') -> list[str]:
 def run() -> None:
     codes = read_lines()
     human = Human()
-    cold_robot = DirectpadRobot(human)
-    radiation_robot = DirectpadRobot(cold_robot)
-    numpad_robot = NumpadRobot(radiation_robot)
+    mover = human
+    dpadRobot = None
+    for _ in range(25):
+        dpadRobot = DirectpadRobot(mover)
+        mover = dpadRobot
+    numpad_robot = NumpadRobot(dpadRobot)
 
     result = sum(numpad_robot.cost(c) * int(c[:-1]) for c in codes)
     print(result)

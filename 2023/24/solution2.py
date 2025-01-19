@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from collections.abc import Callable
 
 class Hailstone:
     def __init__(self, x: int, y: int, z: int, vx: int, vy: int, vz: int) -> None:
@@ -28,28 +29,43 @@ def parse_hailstone(line: str):
     velocity = [int(x) for x in velocity_str.split(', ')]
     return Hailstone(*(position+velocity))
 
+def find_valid_v(hailstones: list[Hailstone], min_v: int, max_v: int, position: Callable[[Hailstone], int], velocity: Callable[[Hailstone], int]):
+    valid = []
+    for v in range(min_v, max_v + 1):
+        lower_velocity = [h for h in hailstones if velocity(h) < v]
+        equal_velocity = [h for h in hailstones if velocity(h) == v]
+        higher_velocity = [h for h in hailstones if velocity(h) > v]
+
+        if len({position(h) for h in equal_velocity}) > 1:
+            continue
+
+        max_position = min((position(h) for h in lower_velocity), default=int(1e100))
+        min_position = max((position(h) for h in higher_velocity), default=int(-1e100))
+
+        if min_position > max_position:
+            continue
+
+        valid.append(v)
+
+    return valid
+
 def run() -> None:
     hailstones = read_hailstones()
-    
-    rights_skip = 0
-    lefts_skip = 0
-    both_skip = 0
-    xs = sorted((h.x, h.vx) for h in hailstones)
-    for idx, (pos, _) in enumerate(xs):
-        left_min_speed = min((vx for _, vx in xs[:idx] if vx > 0), default=9999)
-        right_max_speed = max((vx for _, vx in xs[idx+1:] if vx > 0), default=-9999)
-        rights_skip += left_min_speed < right_max_speed
+    min_vx = min(h.vx for h in hailstones)
+    max_vx = max(h.vx for h in hailstones)
+    min_vy = min(h.vy for h in hailstones)
+    max_vy = max(h.vy for h in hailstones)
+    min_vz = min(h.vz for h in hailstones)
+    max_vz = max(h.vz for h in hailstones)
 
-        speed_to_reach = min((vx for _, vx in xs[:idx] if vx < 0), default=9999)
-        speed_limit = max((vx for _, vx in xs[idx+1:] if vx < 0), default=-9999)
-        lefts_skip += speed_to_reach < speed_limit
+    valid_vx = find_valid_v(hailstones, min_vx, max_vx, lambda h: h.x, lambda h: h.vx)
+    valid_vy = find_valid_v(hailstones, min_vy, max_vy, lambda h: h.y, lambda h: h.vy)
+    valid_vz = find_valid_v(hailstones, min_vz, max_vz, lambda h: h.z, lambda h: h.vz)
 
-        both_skip += (left_min_speed < right_max_speed) and (speed_to_reach < speed_limit)
-
-        if not ((left_min_speed < right_max_speed) and (speed_to_reach < speed_limit)):
-            print(pos, left_min_speed, right_max_speed, speed_limit, speed_to_reach)
-
-    print(rights_skip, lefts_skip, both_skip)
+    print(len(valid_vx))
+    print(len(valid_vy))
+    print(len(valid_vz))
+    print(len(valid_vx) * len(valid_vy) * len(valid_vz))
 
 def visualise() -> None:
     hailstones = read_hailstones()
@@ -66,5 +82,5 @@ def visualise() -> None:
     plt.savefig("lines.png")
 
 
-# run()
-visualise()
+run()
+# visualise()

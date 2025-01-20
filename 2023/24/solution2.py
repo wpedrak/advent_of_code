@@ -1,7 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import math
 from collections.abc import Callable
+from typing import Self
 
 class Hailstone:
     def __init__(self, x: int, y: int, z: int, vx: int, vy: int, vz: int) -> None:
@@ -12,10 +11,10 @@ class Hailstone:
         self.vy = vy
         self.vz = vz
 
-    def move(self, t: int):
-        vector_len = math.sqrt(self.vx**2 + self.vy**2 + self.vz**2)
-        vx, vy, vz = self.vx / vector_len, self.vy / vector_len, self.vz / vector_len
-        return vx * t + self.x, vy * t + self.y, vz * t + self.z
+    def intersects(self, other: Self) -> bool:
+        # self.vx * t + self.x = other.vx * t + other.x
+        t = (other.x - self.x) / (self.vx - other.vx)
+        return abs(self.vy * t + self.y - other.vy * t - other.y) < 0.01 and abs(self.vz * t + self.z - other.vz * t - other.z) < 0.01
 
 def read_lines(filename='input.txt') -> list[str]:
     return [line.rstrip() for line in open(filename, 'r', encoding='utf-8')]
@@ -51,6 +50,9 @@ def find_valid_v(hailstones: list[Hailstone], min_v: int, max_v: int, position: 
 
 def run() -> None:
     hailstones = read_hailstones()
+
+    print('Calculating valid velocities...', end='', flush=True)
+
     min_vx = min(h.vx for h in hailstones)
     max_vx = max(h.vx for h in hailstones)
     min_vy = min(h.vy for h in hailstones)
@@ -62,25 +64,46 @@ def run() -> None:
     valid_vy = find_valid_v(hailstones, min_vy, max_vy, lambda h: h.y, lambda h: h.vy)
     valid_vz = find_valid_v(hailstones, min_vz, max_vz, lambda h: h.z, lambda h: h.vz)
 
-    print(len(valid_vx))
-    print(len(valid_vy))
-    print(len(valid_vz))
-    print(len(valid_vx) * len(valid_vy) * len(valid_vz))
+    print('done!', flush=True)
+    print('Testing valid velocities...', end='', flush=True)
 
-def visualise() -> None:
-    hailstones = read_hailstones()
-    tick = 100000000000000
-    
-    ax = plt.figure().add_subplot(projection='3d')
-    for hailstone in hailstones[:30]:
-        x1, y1, z1 = hailstone.move(0)
-        x2, y2, z2 = hailstone.move(tick)
-        
-        ax.plot([x1, x2], [y1, y2], [z1, z2])
-        ax.quiver(x1, y1, z1, x2-x1, y2-y1, z2-z1)
+    h1, h2 = hailstones[:2]
+    stones = []
+    for vx in valid_vx:
+        for vy in valid_vy:
+            for vz in valid_vz:
+                # variables are x, y, z, t1, t2
+                eq = np.array([
+                    [-1, 0, 0, h1.vx - vx, 0],  # vx1 * t1 + x1 = vx * t1 + x
+                    [0, -1, 0, h1.vy - vy, 0],  # vy1 * t1 + y1 = vy * t1 + y
+                    [0, 0, -1, h1.vz - vz, 0],  # vz1 * t1 + z1 = vz * t1 + z
+                    [-1, 0, 0, 0, h2.vx - vx],  # vx2 * t2 + x1 = vx * t2 + x
+                    [0, -1, 0, 0, h2.vy - vy],  # vy2 * t2 + y1 = vy * t2 + y
+                ])
+                const = np.array([
+                    -h1.x,  # vx1 * t1 + x1 = vx * t1 + x
+                    -h1.y,  # vy1 * t1 + y1 = vy * t1 + y
+                    -h1.z,  # vz1 * t1 + z1 = vz * t1 + z
+                    -h2.x,  # vx2 * t2 + x1 = vx * t2 + x
+                    -h2.y,  # vy2 * t2 + y1 = vy * t2 + y
+                ])
+                x, y, z, t1, t2 = np.linalg.solve(eq, const)
+                if t1 < 0 or t2 < 0:
+                    continue
+                if h2.vz * t2 + h2.z - vz * t2 - z > 0.01:
+                    continue
+                if abs(x - int(x)) > 0.01 or abs(y - int(y)) > 0.01 or abs(z - int(z)) > 0.01:
+                    continue
+                
+                stone = Hailstone(int(x), int(y), int(z), vx, vy, vz)
+                if any(not stone.intersects(h) for h in hailstones):
+                    continue
 
-    plt.savefig("lines.png")
+                stones.append(stone)
 
+    print('done!', flush=True)
+    assert len(stones) == 1
+    s = stones[0]
+    print(s.x + s.y + s.z)
 
 run()
-# visualise()

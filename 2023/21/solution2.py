@@ -26,38 +26,42 @@ def find_starting_plot(plots: list[str]) -> Point:
     
     raise Exception(':<')
 
-def manhattan(p1: Point, p2: Point):
-    x1, y1 = p1
-    x2, y2 = p2
-    return abs(x1 - x2) + abs(y1 - y2)
-
 def achievable_count(plots: Plots, start: Point):
     reached = {start}
     deltas = [(1,0), (-1,0), (0,1), (0, -1)]
     dist = 0
     cnt = {}
     to_visit = deque([start, 'UP'])
-    visited = set()
+    visited_odd = set()
+    visited_even = set()
+    visited_current = visited_even
 
     while to_visit:
         position = to_visit.popleft()
 
         if isinstance(position, str):
-            cnt[dist] = sum(manhattan(start, v) % 2 == dist % 2 for v in visited)
+            cnt[dist] = len(visited_current)
             dist += 1
+            visited_current = visited_odd if dist % 2 else visited_even
+
             if to_visit:
                 to_visit.append('UP')
             continue
 
-        if position in visited:
+        if position in visited_odd or position in visited_even:
             continue
 
-        visited.add(position)
+        visited_current.add(position)
         x, y = position
         to_visit += {(x+dx, y+dy) for dx, dy in deltas if plots[y+dy][x+dx] != '#'}
 
     return cnt
 
+def count_cross(plots: Plots):
+    return 0
+
+def count_diagonals(plots: Plots):
+    return 0
 
 def run() -> None:
     plots = read_plots()
@@ -71,7 +75,11 @@ def run() -> None:
     assert '#' not in {row[start_position[0]] for row in plots[1:-1]}
     assert '#' not in set(plots[start_position[1]][1:-1])
 
-    tmp = achievable_count(plots, start_position)
-    print(tmp[64])
+    
+    result = max(cnt for dist, cnt in achievable_count(plots, start_position).items() if dist % 2 == STEPS % 2)
+    result += count_cross(plots)
+    result += count_diagonals(plots)
+
+    print(result)
 
 run()

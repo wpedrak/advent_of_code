@@ -26,7 +26,7 @@ def find_starting_plot(plots: list[str]) -> Point:
     
     raise Exception(':<')
 
-def achievable_count(plots: Plots, start: Point):
+def achievable_count(plots: Plots, start: Point) -> dict[int, int]:
     reached = {start}
     deltas = [(1,0), (-1,0), (0,1), (0, -1)]
     dist = 0
@@ -57,11 +57,55 @@ def achievable_count(plots: Plots, start: Point):
 
     return cnt
 
+def achievable_count_full_map(plots: Plots = None, cnt: dict[int, int] = None) -> int:
+    if plots is None and cnt is None:
+        raise Exception(':<')
+    if cnt is None:
+        cnt = achievable_count(plots, (1, 1))
+    return max(cnt for dist, cnt in cnt.items() if dist % 2 == STEPS % 2)
+
 def count_cross(plots: Plots):
-    return 0
+    map_size = len(plots) - 2
+
+    result = 0
+    for start_point in [(len(plots)//2, 1), (1, len(plots)//2), (len(plots)-2, len(plots)//2), (len(plots)//2, len(plots)-2)]:
+        cnt = achievable_count(plots, start_point)
+        full_map_cnt, full_map_steps = max((cnt, dist) for dist, cnt in cnt.items() if dist % 2 == STEPS % 2)
+
+        steps = STEPS
+        # go til you leave first map
+        steps -= map_size//2 + 1
+
+        # go till you can reach every point in the map
+        full_maps = steps // map_size
+        steps -= full_maps * map_size
+        if steps + map_size < full_map_steps:
+            steps += map_size
+            full_maps -= 1
+
+        result += full_maps * full_map_cnt + cnt[steps]
+
+    return result
 
 def count_diagonals(plots: Plots):
-    return 0
+    map_size = len(plots) - 2
+
+    result = 0
+    for start_point in [(1, 1), (len(plots)-2, 1), (1, len(plots)-2), (len(plots)-2, len(plots)-2)]:
+        cnt = achievable_count(plots, start_point)
+        full_map_cnt, full_map_steps = max((cnt, dist) for dist, cnt in cnt.items() if dist % 2 == STEPS % 2)
+
+        for steps_till_start in range(map_size + 1, STEPS, map_size):
+            steps = STEPS - steps_till_start
+
+            # go till you can reach every point in the map
+            full_maps = steps // map_size
+            steps -= full_maps * map_size
+            if steps + map_size < full_map_steps:
+                steps += map_size
+                full_maps -= 1
+
+
 
 def run() -> None:
     plots = read_plots()
@@ -75,8 +119,7 @@ def run() -> None:
     assert '#' not in {row[start_position[0]] for row in plots[1:-1]}
     assert '#' not in set(plots[start_position[1]][1:-1])
 
-    
-    result = max(cnt for dist, cnt in achievable_count(plots, start_position).items() if dist % 2 == STEPS % 2)
+    result = achievable_count_full_map(plots=plots)
     result += count_cross(plots)
     result += count_diagonals(plots)
 

@@ -97,15 +97,16 @@ def count_diagonals(plots: Plots):
 
         for steps_till_start in range(map_size + 1, STEPS, map_size):
             steps = STEPS - steps_till_start
-
-            # go till you can reach every point in the map
+     
             full_maps = steps // map_size
             steps -= full_maps * map_size
-            if steps + map_size < full_map_steps:
+            while steps + map_size < full_map_steps:
                 steps += map_size
                 full_maps -= 1
 
+            result += full_maps * full_map_cnt + cnt[steps]
 
+    return result
 
 def run() -> None:
     plots = read_plots()

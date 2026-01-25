@@ -56,8 +56,14 @@ def achievable_count(plots: Plots, start: Point) -> list[int]:
 def count_cross(plots: Plots):
     map_size = len(plots) - 2
 
+    top_mid: Point = (len(plots)//2, 1)
+    mid_left: Point = (1, len(plots)//2)
+    mid_right: Point = (len(plots)-2, len(plots)//2)
+    bottom_mid: Point = (len(plots)//2, len(plots)-2)
+    start_points: list[Point] = [top_mid, mid_left, mid_right, bottom_mid]
+
     result = 0
-    for start_point in [(len(plots)//2, 1), (1, len(plots)//2), (len(plots)-2, len(plots)//2), (len(plots)//2, len(plots)-2)]:
+    for start_point in start_points:
         cnt = achievable_count(plots, start_point)
         full_map_cnt_even, full_map_steps_even = max((cnt, dist) for dist, cnt in enumerate(cnt) if not dist % 2)
         full_map_cnt_odd, full_map_steps_odd = max((cnt, dist) for dist, cnt in enumerate(cnt) if dist % 2)
@@ -82,13 +88,16 @@ def count_cross(plots: Plots):
         pre_last_map_parity = (first_map_parity + full_maps - 1) % 2
         pre_last_map_full_steps = full_map_steps_even if pre_last_map_parity == 0 else full_map_steps_odd
         if steps + map_size < pre_last_map_full_steps:
+            result += cnt[steps]  # count very last map before going back
             full_maps -= 1
             steps += map_size
 
+        # count the whole path
         result += full_maps//2 * full_map_cnt_even
         result += full_maps//2 * full_map_cnt_odd
         first_map_cnt = full_map_cnt_even if first_map_parity == 0 else full_map_cnt_odd
         result += first_map_cnt if full_maps % 2 == 1 else 0
+        # and the last map (possibly last AFTER taking step back)
         result += cnt[steps]
 
     return result
@@ -149,5 +158,15 @@ def run() -> None:
     # so far the result is too low
     assert result > 638110317012349
     # TODO: account for changing parity when counting full maps
+
+
+# Example:
+# In exactly 6 steps, he can still reach 16 garden plots.
+# In exactly 10 steps, he can reach any of 50 garden plots.
+# In exactly 50 steps, he can reach 1594 garden plots.
+# In exactly 100 steps, he can reach 6536 garden plots.
+# In exactly 500 steps, he can reach 167004 garden plots.
+# In exactly 1000 steps, he can reach 668697 garden plots.
+# In exactly 5000 steps, he can reach 16733044 garden plots.
 
 run()

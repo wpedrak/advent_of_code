@@ -8,8 +8,8 @@ STEPS = 26501365
 def read_lines(filename: str = 'input.txt') -> list[str]:
     return [line.rstrip() for line in open(filename, 'r', encoding='utf-8')]
 
-def read_plots() -> list[str]:
-    lines = read_lines()
+def read_plots(filename: str = 'input.txt') -> list[str]:
+    lines = read_lines(filename=filename)
     plots: list[str] = []
     for line in lines:
         plots.append('#' + line + '#')
@@ -136,6 +136,16 @@ def run() -> None:
     assert '#' not in {row[start_position[0]] for row in plots[1:-1]}
     assert '#' not in set(plots[start_position[1]][1:-1])
 
+    result = max(cnt for dist, cnt in enumerate(achievable_count(plots, start_position)) if dist % 2 == STEPS % 2)
+    result += count_cross(plots)
+    result += count_diagonals(plots)
+
+    print(result)
+    # so far failed with the following results
+    assert 638110317012349 < result < 1278103017916873
+
+def experiment():
+    plots = read_plots(filename="example.txt")
 
     corner = (1, 1)
     mid_top = (len(plots)//2, 1)
@@ -145,15 +155,9 @@ def run() -> None:
     
     print(len(cnt1), cnt1[-5:])
     print(len(cnt2), cnt2[-5:])
+    print(sum(sum(x in '.S' for x in row) for row in plots))
 
 
-    result = max(cnt for dist, cnt in enumerate(achievable_count(plots, start_position)) if dist % 2 == STEPS % 2)
-    result += count_cross(plots)
-    result += count_diagonals(plots)
-
-    print(result)
-    # so far failed with the following results
-    assert 638110317012349 < result < 1278103017916873
 
 # Example:
 # In exactly 6 steps, he can still reach 16 garden plots.
@@ -164,4 +168,5 @@ def run() -> None:
 # In exactly 1000 steps, he can reach 668697 garden plots.
 # In exactly 5000 steps, he can reach 16733044 garden plots.
 
-run()
+# run()
+experiment()

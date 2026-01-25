@@ -65,67 +65,64 @@ def count_cross(plots: Plots):
     result = 0
     for start_point in start_points:
         cnt = achievable_count(plots, start_point)
-        full_map_cnt_even, full_map_steps_even = max((cnt, dist) for dist, cnt in enumerate(cnt) if not dist % 2)
-        full_map_cnt_odd, full_map_steps_odd = max((cnt, dist) for dist, cnt in enumerate(cnt) if dist % 2)
-
-        # max cnts should be at the end of cnt list
-        assert {full_map_cnt_even, full_map_cnt_odd} == set(cnt[-2:])
-
-        print(full_map_cnt_even, full_map_steps_even)
-        print(full_map_cnt_odd, full_map_steps_odd)
-
-        steps = STEPS
-        # go til you leave first map
-        steps -= map_size//2 + 1
-
-        # go till you can reach every point in the map
-        # 1. go straight
-        full_maps = steps // map_size
-        steps -= full_maps * map_size
-        # 2. it might be that we weren't able to reach every point in the last map, so go back 1 map
-        first_map_parity = (STEPS - map_size//2 - 1) % 2
-        assert first_map_parity == 0
-        pre_last_map_parity = (first_map_parity + full_maps - 1) % 2
-        pre_last_map_full_steps = full_map_steps_even if pre_last_map_parity == 0 else full_map_steps_odd
-        if steps + map_size < pre_last_map_full_steps:
-            result += cnt[steps]  # count very last map before going back
-            full_maps -= 1
-            steps += map_size
-
-        # count the whole path
-        result += full_maps//2 * full_map_cnt_even
-        result += full_maps//2 * full_map_cnt_odd
-        first_map_cnt = full_map_cnt_even if first_map_parity == 0 else full_map_cnt_odd
-        result += first_map_cnt if full_maps % 2 == 1 else 0
-        # and the last map (possibly last AFTER taking step back)
-        result += cnt[steps]
-
+        result += count_path(map_size, cnt, STEPS - map_size//2 - 1)
     return result
 
 def count_diagonals(plots: Plots):
     map_size = len(plots) - 2
 
-    result = 0
-    for start_point in [(1, 1), (len(plots)-2, 1), (1, len(plots)-2), (len(plots)-2, len(plots)-2)]:
+    top_left: Point = (1, 1)
+    top_right: Point = (len(plots)-2, 1)
+    bottom_left: Point = (1, len(plots)-2)
+    bottom_right: Point = (len(plots)-2, len(plots)-2)
+    start_points: list[Point] = [top_left, top_right, bottom_left, bottom_right]
+
+    result: int = 0
+    for start_point in start_points:
         cnt = achievable_count(plots, start_point)
-        full_map_cnt, full_map_steps = max((cnt, dist) for dist, cnt in enumerate(cnt) if dist % 2 == (STEPS - map_size - 1) % 2)
 
-        print(full_map_cnt, full_map_steps)
-
-        for steps_till_start in range(map_size + 1, STEPS, map_size):
-            steps = STEPS - steps_till_start
-     
-            full_maps = steps // map_size
-            steps -= full_maps * map_size
-            result += cnt[steps]
-            while steps + map_size < full_map_steps and full_maps > 0:
-                steps += map_size
-                full_maps -= 1
-                result += cnt[steps]
-
-            result += full_maps * full_map_cnt
+        # we will count quater: row by row starting from the closest to the start
+        for steps_till_start in range(map_size + 2, STEPS + 1, map_size):
+            result += count_path(map_size, cnt, STEPS - steps_till_start)
 
     return result
+
+def count_path(map_size: int, cnt: list[int], remaining_steps: int) -> int:
+    options_count = 0
+
+    max_cnt = len(cnt) - 1
+    full_map_cnt_even, full_map_steps_even = (cnt[-1], max_cnt) if is_even(max_cnt) else (cnt[-2], max_cnt-1)
+    full_map_cnt_odd, full_map_steps_odd = (cnt[-1], max_cnt) if is_odd(max_cnt) else (cnt[-2], max_cnt-1)
+
+    first_map_parity = (STEPS - remaining_steps) % 2
+
+    # go till you can reach every point in the map
+    # 1. go straight
+    full_maps = remaining_steps // map_size
+    remaining_steps -= full_maps * map_size
+    # 2. it might be that we weren't able to reach every point in the last map, so go back 1 map
+    pre_last_map_parity = (first_map_parity + full_maps - 1) % 2
+    pre_last_map_full_steps = full_map_steps_even if is_even(pre_last_map_parity) else full_map_steps_odd
+    if remaining_steps + map_size < pre_last_map_full_steps:
+        options_count += cnt[remaining_steps]  # count very last map before going back
+        full_maps -= 1
+        remaining_steps += map_size
+
+    # count the whole path
+    options_count += full_maps//2 * full_map_cnt_even
+    options_count += full_maps//2 * full_map_cnt_odd
+    first_map_cnt = full_map_cnt_even if is_even(first_map_parity) else full_map_cnt_odd
+    options_count += first_map_cnt if is_odd(full_maps) else 0
+    # count the last map (possibly last AFTER taking step back)
+    options_count += cnt[remaining_steps]
+
+    return options_count
+
+def is_even(n: int) -> bool:
+    return n % 2 == 0
+
+def is_odd(n: int) -> bool:
+    return n % 2 == 1
 
 def run() -> None:
     plots = read_plots()
@@ -155,10 +152,8 @@ def run() -> None:
     result += count_diagonals(plots)
 
     print(result)
-    # so far the result is too low
-    assert result > 638110317012349
-    # TODO: account for changing parity when counting full maps
-
+    # so far failed with the following results
+    assert 638110317012349 < result < 1278103017916873
 
 # Example:
 # In exactly 6 steps, he can still reach 16 garden plots.

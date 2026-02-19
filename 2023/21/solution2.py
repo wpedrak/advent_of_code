@@ -3,18 +3,18 @@ from collections import deque
 Point = tuple[int, int]
 Plots = list[str]
 
-STEPS = 26501365
-
 def read_lines(filename: str = 'input.txt') -> list[str]:
     return [line.rstrip() for line in open(filename, 'r', encoding='utf-8')]
 
 def read_plots(filename: str = 'input.txt') -> list[str]:
-    lines = read_lines(filename=filename)
-    plots: list[str] = []
-    for line in lines:
-        plots.append('#' + line + '#')
-    width = len(plots[0])
-    return ['#' * width] + plots + ['#' * width] 
+    return wrapped(read_lines(filename=filename))
+
+def wrapped(plots: list[str]) -> list[str]:
+    wrapped_plots: list[str] = []
+    for row in plots:
+        wrapped_plots.append('#' + row + '#')
+    width = len(wrapped_plots[0])
+    return ['#' * width] + wrapped_plots + ['#' * width] 
 
 def find_starting_plot(plots: Plots) -> Point:
     for y, row in enumerate(plots):
@@ -57,7 +57,7 @@ def achievable_count(plots: Plots, start: Point) -> list[int]:
 
     return cnt
 
-def count_cross(plots: Plots):
+def count_cross(plots: Plots, total_steps: int):
     map_size = len(plots) - 2
 
     top_mid: Point = (len(plots)//2, 1)
@@ -69,10 +69,10 @@ def count_cross(plots: Plots):
     result = 0
     for start_point in start_points:
         cnt = achievable_count(plots, start_point)
-        result += count_path(map_size, cnt, STEPS - map_size//2 - 1)
+        result += count_path(map_size, cnt, total_steps - map_size//2 - 1)
     return result
 
-def count_diagonals(plots: Plots):
+def count_diagonals(plots: Plots, total_steps: int):
     map_size = len(plots) - 2
 
     top_left: Point = (1, 1)
@@ -86,8 +86,8 @@ def count_diagonals(plots: Plots):
         cnt = achievable_count(plots, start_point)
 
         # we will count quater: row by row starting from the closest to the start
-        for steps_till_start in range(map_size + 2, STEPS + 1, map_size):
-            result += count_path(map_size, cnt, STEPS - steps_till_start)
+        for steps_till_start in range(map_size + 2, total_steps + 1, map_size):
+            result += count_path(map_size, cnt, total_steps - steps_till_start)
 
     return result
 
@@ -128,8 +128,8 @@ def is_even(n: int) -> bool:
 def is_odd(n: int) -> bool:
     return n % 2 == 1
 
-def run() -> None:
-    plots = read_plots()
+
+def count_options(plots: list[str], total_steps: int):
     start_position = find_starting_plot(plots)
 
     # plots shape is odd-sized square
@@ -144,13 +144,62 @@ def run() -> None:
     full_map_cnt_even = cnt[-1] if is_even(len(cnt)-1) else cnt[-2]
     full_map_cnt_odd = cnt[-1] if is_odd(len(cnt)-1) else cnt[-2]
 
-    result = full_map_cnt_even if is_even(STEPS) else full_map_cnt_odd
-    result += count_cross(plots)
-    result += count_diagonals(plots)
+    result = full_map_cnt_even if is_even(total_steps) else full_map_cnt_odd
+    result += count_cross(plots, total_steps)
+    result += count_diagonals(plots, total_steps)
 
+    return result
+
+def count_options_naive(plots: list[str], total_steps: int):
+    plots = [row[1:-1] for row in plots[1:-1]]
+    scale_factor = (total_steps  // len(plots)) + 1
+    big_plots = [row * scale_factor for _ in range(scale_factor) for row in plots]
+    return achievable_count(wrapped(big_plots), (len(big_plots) // 2, len(big_plots) // 2))[total_steps]
+
+def run() -> None:
+    plots = read_plots()
+    result = count_options(plots, 26501365)
     print(result)
     # so far failed with the following results
     assert 638110317012349 < result < 1278103017916873
+
+
+def test_unit():
+    plots1 = [
+        '#######',
+        '#.....#',
+        '#.#.#.#',
+        '#.....#',
+        '#.#.#.#',
+        '#.....#',
+        '#######',
+    ]
+    corner_cnt = [1, 2, 3, 6, 6, 10, 8, 12, 9]
+    edge_cnt = [1, 3, 4, 8, 7, 12, 9]
+    assert achievable_count(plots1, (1,1)) == corner_cnt
+    assert achievable_count(plots1, (5,1)) == corner_cnt
+    assert achievable_count(plots1, (1,5)) == corner_cnt
+    assert achievable_count(plots1, (5,5)) == corner_cnt
+    assert achievable_count(plots1, (3,3)) == [1, 4, 5, 12, 9]
+    assert achievable_count(plots1, (3,1)) == edge_cnt
+    assert achievable_count(plots1, (1,3)) == edge_cnt
+    assert achievable_count(plots1, (5,3)) == edge_cnt
+    assert achievable_count(plots1, (3,5)) == edge_cnt
+
+    assert count_path(5, corner_cnt, 3) == 6
+    assert count_path(5, corner_cnt, 5) == 10 + 1
+    assert count_path(5, corner_cnt, 6) == 8 + 2
+
+def test_hard():
+    plots = read_plots()
+    for steps in range(100):
+        print(steps, end=' ')
+        smart = count_options(plots, steps)
+        naive = count_options_naive(plots, steps)
+        print(naive, end='')
+        if smart != naive:
+            print('', smart, end='')
+        print('')
 
 
 def experiment():
@@ -179,5 +228,6 @@ def experiment():
 # In exactly 1000 steps, he can reach 668697 garden plots.
 # In exactly 5000 steps, he can reach 16733044 garden plots.
 
-run()
+# run()
 # experiment()
+test_hard()

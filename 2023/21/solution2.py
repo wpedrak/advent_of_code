@@ -74,6 +74,7 @@ def count_cross(plots: Plots, total_steps: int):
 
 def count_diagonals(plots: Plots, total_steps: int):
     map_size = len(plots) - 2
+    mid_to_edge = map_size // 2
 
     top_left: Point = (1, 1)
     top_right: Point = (len(plots)-2, 1)
@@ -86,7 +87,7 @@ def count_diagonals(plots: Plots, total_steps: int):
         cnt = achievable_count(plots, start_point)
 
         # we will count quater: row by row starting from the closest to the start
-        for steps_till_start in range(map_size + 2, total_steps + 1, map_size):
+        for steps_till_start in range(2*(mid_to_edge+1), total_steps + 1, map_size):
             result += count_path(map_size, cnt, total_steps - steps_till_start)
 
     return result
@@ -107,7 +108,7 @@ def count_path(map_size: int, cnt: list[int], remaining_steps: int) -> int:
     full_maps = remaining_steps // map_size
     remaining_steps -= full_maps * map_size
     # 2. it might be that we weren't able to reach every point in the last map, so go back 1 map
-    pre_last_map_is_even = is_even(first_map_is_even + full_maps - 1)
+    pre_last_map_is_even = is_even(not(first_map_is_even) + full_maps - 1)
     pre_last_map_full_steps = full_map_steps_even if pre_last_map_is_even else full_map_steps_odd
     if remaining_steps + map_size < pre_last_map_full_steps and full_maps:
         options_count += cnt[remaining_steps]  # count very last map before going back
@@ -211,33 +212,5 @@ def test_hard():
             break
         print('')
 
-
-def experiment():
-    plots = read_plots(filename="example.txt")
-
-    corner = (1, 1)
-    mid_top = (len(plots)//2, 1)
-
-    cnt1 = achievable_count(plots, corner)
-    cnt2 = achievable_count(plots, mid_top)
-    
-    print(len(cnt1), cnt1[::2])
-    print(len(cnt1), cnt1[1::2])
-    print(len(cnt2), cnt2[::2])
-    print(len(cnt2), cnt2[1::2])
-    print(sum(sum(x in '.S' for x in row) for row in plots))
-
-
-
-# Example:
-# In exactly 6 steps, he can still reach 16 garden plots.
-# In exactly 10 steps, he can reach any of 50 garden plots.
-# In exactly 50 steps, he can reach 1594 garden plots.
-# In exactly 100 steps, he can reach 6536 garden plots.
-# In exactly 500 steps, he can reach 167004 garden plots.
-# In exactly 1000 steps, he can reach 668697 garden plots.
-# In exactly 5000 steps, he can reach 16733044 garden plots.
-
-# run()
-# experiment()
-test_hard()
+run()
+# test_hard()

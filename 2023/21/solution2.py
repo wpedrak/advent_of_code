@@ -92,6 +92,8 @@ def count_diagonals(plots: Plots, total_steps: int):
     return result
 
 def count_path(map_size: int, cnt: list[int], remaining_steps: int) -> int:
+    if remaining_steps < 0:
+        return 0
     options_count = 0
 
     max_cnt = len(cnt) - 1
@@ -107,7 +109,7 @@ def count_path(map_size: int, cnt: list[int], remaining_steps: int) -> int:
     # 2. it might be that we weren't able to reach every point in the last map, so go back 1 map
     pre_last_map_is_even = is_even(first_map_is_even + full_maps - 1)
     pre_last_map_full_steps = full_map_steps_even if pre_last_map_is_even else full_map_steps_odd
-    if remaining_steps + map_size < pre_last_map_full_steps:
+    if remaining_steps + map_size < pre_last_map_full_steps and full_maps:
         options_count += cnt[remaining_steps]  # count very last map before going back
         full_maps -= 1
         remaining_steps += map_size
@@ -145,16 +147,23 @@ def count_options(plots: list[str], total_steps: int):
     full_map_cnt_odd = cnt[-1] if is_odd(len(cnt)-1) else cnt[-2]
 
     result = full_map_cnt_even if is_even(total_steps) else full_map_cnt_odd
+    if total_steps < len(cnt) - 1:
+        result = cnt[total_steps]
     result += count_cross(plots, total_steps)
     result += count_diagonals(plots, total_steps)
 
     return result
 
+CACHE: dict[int, list[str]] = {}
+
 def count_options_naive(plots: list[str], total_steps: int):
     plots = [row[1:-1] for row in plots[1:-1]]
-    scale_factor = (total_steps  // len(plots)) + 1
-    big_plots = [row * scale_factor for _ in range(scale_factor) for row in plots]
-    return achievable_count(wrapped(big_plots), (len(big_plots) // 2, len(big_plots) // 2))[total_steps]
+    addiotional_maps_each_direction = (total_steps  // len(plots)) + 1
+    scale_factor = addiotional_maps_each_direction * 2 + 1
+    if scale_factor not in CACHE:
+        CACHE[scale_factor] = [row * scale_factor for _ in range(scale_factor) for row in plots]
+    big_plots = CACHE[scale_factor]
+    return achievable_count(wrapped(big_plots), (len(big_plots) // 2 + 1, len(big_plots) // 2 + 1))[total_steps]
 
 def run() -> None:
     plots = read_plots()
@@ -192,13 +201,14 @@ def test_unit():
 
 def test_hard():
     plots = read_plots()
-    for steps in range(100):
+    for steps in range(132, 1000):
         print(steps, end=' ')
-        smart = count_options(plots, steps)
         naive = count_options_naive(plots, steps)
-        print(naive, end='')
+        print('', naive, end='')
+        smart = count_options(plots, steps)
         if smart != naive:
-            print('', smart, end='')
+            print(' vs', smart)
+            break
         print('')
 
 

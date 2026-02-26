@@ -56,33 +56,35 @@ def is_easy(target: Counters, buttons: list[Button]):
     return options <= 10**6
 
 def count_clicks_brute_force(target: Counters, buttons: list[Button]):
-    
+    pass
 
 def count_clicks(target: Counters, buttons: list[Button]):
     return 0
 
 def run() -> None:
     result = 0
-    easy, hard = 0, 0
-    missing = 0
+    types: dict[str, int] = {k: 0 for k in ['reduced', 'homogenous', 'easy', 'hard']}
 
     for target, buttons in read_input():
         clicks, target, buttons = reduce_sigle_counter_coverage(target, buttons)
         result += clicks
         if not buttons:
+            types['reduced'] += 1
             continue
         
         if min(len(b) for b in buttons) == max(len(b) for b in buttons):
             result += sum(target) // len(buttons[0])
+            types['homogenous'] += 1
             continue
 
-        easy += is_easy(target, buttons)
-        hard += not is_easy(target, buttons)
+        types['easy'] += is_easy(target, buttons)
+        types['hard'] += not is_easy(target, buttons)
 
         # result += count_clicks(target, buttons)
-        missing += 1
 
-    print(f'missing: {missing}')
-    print(result, easy, hard)
+    for k in sorted(types):
+        print(k, types[k])
+
+    print(result)
 
 run()

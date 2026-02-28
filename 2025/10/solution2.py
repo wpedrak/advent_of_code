@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from functools import cache
 
 Button = tuple[int, ...]
 Counters = tuple[int, ...]
@@ -55,17 +56,39 @@ def is_easy(target: Counters, buttons: list[Button]):
         options *= max_count(target, button)
     return options <= 10**6
 
-def count_clicks_brute_force(target: Counters, buttons: list[Button]):
-    pass
-
 def count_clicks(target: Counters, buttons: list[Button]):
-    return 0
+    @cache
+    def dp(target: Counters):
+        if any(t < 0 for t in target):
+            return 0
+        if sum(target) == 0:
+            return 1
+        
+        result = 999999999
+        for button in buttons:
+            new_target = list(target)
+            for b in button:
+                new_target[b] -= 1
+            result = min(result, dp(tuple(new_target)) + 1)
+
+        return result
+
+    return dp(target)
+
+
+def mul(items: tuple[int,...]):
+    result = 1
+    for item in items:
+        result *= item
+
+    return result
 
 def run() -> None:
     result = 0
     types: dict[str, int] = {k: 0 for k in ['reduced', 'homogenous', 'easy', 'hard']}
 
-    for target, buttons in read_input():
+    for idx, (target, buttons) in enumerate(read_input()):
+        print(f'{idx:03}/196')
         clicks, target, buttons = reduce_sigle_counter_coverage(target, buttons)
         result += clicks
         if not buttons:
@@ -77,11 +100,13 @@ def run() -> None:
             types['homogenous'] += 1
             continue
 
-        types['easy'] += is_easy(target, buttons)
-        types['hard'] += not is_easy(target, buttons)
+        if is_easy(target, buttons):
+            result += count_clicks(target, buttons)
+            types['easy'] += 1
+        else:
+            types['hard'] += 1
 
-        # result += count_clicks(target, buttons)
-
+    print('')
     for k in sorted(types):
         print(k, types[k])
 

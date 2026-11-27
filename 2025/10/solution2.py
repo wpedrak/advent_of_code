@@ -1,6 +1,6 @@
 import re
 from collections import Counter, defaultdict
-from itertools import combinations
+from itertools import combinations, product
 
 Button = tuple[int, ...]
 Counters = tuple[int, ...]
@@ -8,9 +8,9 @@ Counters = tuple[int, ...]
 def read_lines(filename: str = 'input.txt') -> list[str]:
     return [line.rstrip('\n') for line in open(filename, 'r', encoding='utf-8')]
 
-def read_input():
+def read_input(filename: str = 'input.txt'):
     result: list[tuple[Counters, list[Button]]] = []
-    for line in read_lines():
+    for line in read_lines(filename=filename):
         counters = tuple(int(x) for x in re.findall(r'\{([0-9,]+)\}', line)[0].split(','))
         buttons = [tuple(int(b) for b in buttons.split(',')) for buttons in re.findall(r'\(([0-9,]+)\)', line)]
         result.append((counters, buttons))
@@ -31,6 +31,7 @@ def reduce_sigle_counter_coverage(target: Counters, buttons: list[Button]) -> tu
             button_clicks = target_list[key]
             clicks += button_clicks
             for b in button:
+                # TODO: if calling with non-reducable data, we might result with negative counters
                 target_list[b] -= button_clicks
             break
 
@@ -65,13 +66,40 @@ def find_min_independent_buttons(buttons: list[Button]):
 
 def brute(target: Counters, buttons: list[Button], independent_indices: tuple[int, ...]):
     max_clicks = [max_count(target, buttons[ii]) for ii in independent_indices]
+    max_clicks_ranges = [range(mc+1) for mc in max_clicks]
+    min_clicks = 999_999
 
-    # TODO: in this place we should have for loop over [0, max_clicks] of a button for all independent buttons
+    difficulty = 1
+    for mc in max_clicks:
+        difficulty *= mc
+    print(difficulty, max_clicks)
+    for independent_clicks in product(*max_clicks_ranges):
+        new_target = target
+        for clicks, idx in zip(independent_clicks, independent_indices):
+            new_target = click(new_target, clicks, buttons[idx])
 
-    return 0
+        clicks, new_target, _ = reduce_sigle_counter_coverage(new_target, [b for idx, b in enumerate(buttons) if idx not in independent_indices])
+
+        if min(new_target) < 0 or max(new_target) > 0:
+            continue
+
+        min_clicks = min(min_clicks, clicks + sum(independent_clicks))
+
+    assert min_clicks != 999_999
+    return min_clicks
+
+def click(target: Counters, clicks_number: int, button: Button) -> Counters:
+    editable_target = list(target)
+    for b in button:
+        editable_target[b] -= clicks_number
+    return tuple(editable_target)
 
 def max_count(target: Counters, button: Button):
     return min(target[b] for b in button)
+
+def solve(target: Counters, buttons: list[Button]) -> int:
+    indepedent_indices = find_min_independent_buttons(buttons)
+    return brute(target, buttons, indepedent_indices)
 
 def run() -> None:
     result = 0
@@ -82,8 +110,8 @@ def run() -> None:
         indepedent_indices = find_min_independent_buttons(buttons)
         button_len[len(indepedent_indices)] += 1
 
-        if len(indepedent_indices) < 3:
-            result += brute(target, buttons, indepedent_indices)
+        if len(indepedent_indices) <= 3:
+            result += solve(target, buttons)
 
     print('')
 
@@ -92,4 +120,11 @@ def run() -> None:
 
     print(result)
 
+def test():
+    test_cases = read_input(filename='example.txt')
+    assert solve(*test_cases[0]) == 10
+    assert solve(*test_cases[1]) == 12
+    assert solve(*test_cases[2]) == 11
+
+test()
 run()
